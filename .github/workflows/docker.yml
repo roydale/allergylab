@@ -62,13 +62,13 @@ jobs:
       run: |
         APP_IMAGE=${{ secrets.DOCKER_USERNAME }}/al-app:${{ github.sha }}
         docker pull $APP_IMAGE
-        cosign verify --certificate-identity https://github.com/${{ github.actor }}/allergylab/.github/workflows/docker.yaml@refs/heads/main --certificate-oidc-issuer https://token.actions.githubusercontent.com $APP_IMAGE
+        cosign verify --certificate-identity https://github.com/${{ github.actor }}/allergylab/.github/workflows/docker.yml@refs/heads/main --certificate-oidc-issuer https://token.actions.githubusercontent.com $APP_IMAGE
         DB_LOADER_IMAGE=${{ secrets.DOCKER_USERNAME }}/al-db-loader:${{ github.sha }}
         docker pull $DB_LOADER_IMAGE
-        cosign verify --certificate-identity https://github.com/${{ github.actor }}/allergylab/.github/workflows/docker.yaml@refs/heads/main --certificate-oidc-issuer https://token.actions.githubusercontent.com $DB_LOADER_IMAGE
+        cosign verify --certificate-identity https://github.com/${{ github.actor }}/allergylab/.github/workflows/docker.yml@refs/heads/main --certificate-oidc-issuer https://token.actions.githubusercontent.com $DB_LOADER_IMAGE
         EMAIL_IMAGE=${{ secrets.DOCKER_USERNAME }}/al-email:${{ github.sha }}
         docker pull $EMAIL_IMAGE
-        cosign verify --certificate-identity https://github.com/${{ github.actor }}/allergylab/.github/workflows/docker.yaml@refs/heads/main --certificate-oidc-issuer https://token.actions.githubusercontent.com $EMAIL_IMAGE
+        cosign verify --certificate-identity https://github.com/${{ github.actor }}/allergylab/.github/workflows/docker.yml@refs/heads/main --certificate-oidc-issuer https://token.actions.githubusercontent.com $EMAIL_IMAGE
         docker run -d $APP_IMAGE
         docker run -d $DB_LOADER_IMAGE
         docker run -d $EMAIL_IMAGE
