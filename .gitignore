@@ -15,3 +15,8 @@ Part7/trevor.pub
 Part10/README.md
 Part9/README.md
 Part11/README.md
+
+# Local secret files (keep out of git). The .example templates stay tracked.
+Part4/.env
+Part5/db.env
+Part5/email.env

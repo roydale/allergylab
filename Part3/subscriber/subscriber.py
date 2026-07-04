@@ -1,5 +1,4 @@
-import redis
-import time
+import redis, time
 
 r = redis.Redis(host='redis-server', port=6379, db=0)
 

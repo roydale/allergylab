@@ -8,6 +8,8 @@ services:
       depends_on:
         - dbhost
         - redis-server
+      env_file:
+        - db.env
     redis-server:
       image: redis
     email:
@@ -16,15 +18,15 @@ services:
         - 25:25
       depends_on:
         - redis-server
-      environment:
-        TO_ADDRESS: <your Quantic email>
-        FROM_ADDRESS: <new Gmail email>
-        FROM_PASSWORD: <Gmail app password>
+      env_file:
+        - email.env
     db-loader:
       build: db-loader/.
       volumes: 
-        - <Enter Here>allergy-lab-watchfolder:/mnt/watchfolder/
+        - C:/Users/Roy Quantic/OneDrive - servicePath/Files/Reviewer/MSSE/Lessons/0803/allergylab/allergy-lab-watchfolder:/mnt/watchfolder/
       environment:
         FOLDER_PATH: /mnt/watchfolder/
+      env_file:
+        - db.env
       depends_on:
         - dbhost
