@@ -1,5 +1,10 @@
-name: AllergyLab CI/CD
+name: AllergyLab CI
+
 on: [push]
+
+permissions:
+  id-token: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -9,9 +14,15 @@ jobs:
     - name: Build images
       run: |
         cd Part7a
-        docker build -t ${{ secrets.DOCKER_USERNAME }}/al-app:latest ./app
-        docker build -t ${{ secrets.DOCKER_USERNAME }}/al-db-loader:latest ./db-loader
-        docker build -t ${{ secrets.DOCKER_USERNAME }}/al-email:latest ./email
+        APP_IMAGE=${{ secrets.DOCKER_USERNAME }}/al-app:${{ github.sha }}
+        echo APP_IMAGE=$APP_IMAGE >> $GITHUB_ENV        # makes the variable available in other steps
+        docker build -t $APP_IMAGE ./app
+        DB_LOADER_IMAGE=${{ secrets.DOCKER_USERNAME }}/al-db-loader:${{ github.sha }}
+        echo DB_LOADER_IMAGE=$DB_LOADER_IMAGE >> $GITHUB_ENV
+        docker build -t $DB_LOADER_IMAGE ./db-loader
+        EMAIL_IMAGE=${{ secrets.DOCKER_USERNAME }}/al-email:${{ github.sha }}
+        echo EMAIL_IMAGE=$EMAIL_IMAGE >> $GITHUB_ENV
+        docker build -t $EMAIL_IMAGE ./email
     - name: Log in to Docker
       uses: docker/login-action@v3
       with:
@@ -19,18 +30,45 @@ jobs:
         password: ${{ secrets.DOCKER_TOKEN }}
     - name: Push images to DockerHub
       run: |
-        docker push ${{ secrets.DOCKER_USERNAME }}/al-app:latest
-        docker push ${{ secrets.DOCKER_USERNAME }}/al-db-loader:latest
-        docker push ${{ secrets.DOCKER_USERNAME }}/al-email:latest
+        docker push $APP_IMAGE
+        APP_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $APP_IMAGE)
+        echo APP_DIGEST=$APP_DIGEST >> $GITHUB_ENV
+        docker push $DB_LOADER_IMAGE
+        DB_LOADER_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $DB_LOADER_IMAGE)
+        echo DB_LOADER_DIGEST=$DB_LOADER_DIGEST >> $GITHUB_ENV
+        docker push $EMAIL_IMAGE
+        EMAIL_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $EMAIL_IMAGE)
+        echo EMAIL_DIGEST=$EMAIL_DIGEST >> $GITHUB_ENV
+    - name: Install cosign
+      uses: sigstore/cosign-installer@v3
+    - name: Sign images
+      env:
+        COSIGN_YES: "true"
+      run: |
+        cosign sign $APP_DIGEST
+        cosign sign $DB_LOADER_DIGEST
+        cosign sign $EMAIL_DIGEST
   deploy:
     needs: [build]
     runs-on: ubuntu-latest
     steps:
     - name: '**PLACEHOLDER** Deploy to Kubernetes'
       run: echo Placeholder for Deployment
-    - name: Run containers
+    - name: Install cosign
+      uses: sigstore/cosign-installer@v3
+    - name: Verify and run images
+      env:
+        COSIGN_YES: "true"
       run: |
-        docker run -d ${{ secrets.DOCKER_USERNAME }}/al-app:latest
-        docker run -d ${{ secrets.DOCKER_USERNAME }}/al-db-loader:latest
-        docker run -d ${{ secrets.DOCKER_USERNAME }}/al-email:latest
-
+        APP_IMAGE=${{ secrets.DOCKER_USERNAME }}/al-app:${{ github.sha }}
+        docker pull $APP_IMAGE
+        cosign verify --certificate-identity https://github.com/${{ github.actor }}/allergylab/.github/workflows/docker.yaml@refs/heads/main --certificate-oidc-issuer https://token.actions.githubusercontent.com $APP_IMAGE
+        DB_LOADER_IMAGE=${{ secrets.DOCKER_USERNAME }}/al-db-loader:${{ github.sha }}
+        docker pull $DB_LOADER_IMAGE
+        cosign verify --certificate-identity https://github.com/${{ github.actor }}/allergylab/.github/workflows/docker.yaml@refs/heads/main --certificate-oidc-issuer https://token.actions.githubusercontent.com $DB_LOADER_IMAGE
+        EMAIL_IMAGE=${{ secrets.DOCKER_USERNAME }}/al-email:${{ github.sha }}
+        docker pull $EMAIL_IMAGE
+        cosign verify --certificate-identity https://github.com/${{ github.actor }}/allergylab/.github/workflows/docker.yaml@refs/heads/main --certificate-oidc-issuer https://token.actions.githubusercontent.com $EMAIL_IMAGE
+        docker run -d $APP_IMAGE
+        docker run -d $DB_LOADER_IMAGE
+        docker run -d $EMAIL_IMAGE
